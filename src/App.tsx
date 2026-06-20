@@ -52,6 +52,7 @@ import {
 import { ClientProfile, Message, ConsultingReport } from "./types";
 import { SAMPLE_CLIENTS, DEFAULT_REPORT } from "./data";
 import { CompetitorHeatmap } from "./components/CompetitorHeatmap";
+import { KeywordClusterChart } from "./components/KeywordClusterChart";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -2380,8 +2381,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* 상담 핵심 요약 토글 & 말풍선 키워드 시각화 */}
-                  <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 shadow-sm" id="key-summary-toggle-container">
+                  {/* 상담 핵심 요약 토글 & 2D 고민 클러스터 관계 차트 시각화 */}
+                  <div className="bg-slate-50 rounded-3xl p-5 border border-slate-200/80 shadow-sm" id="key-summary-toggle-container">
                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 mb-4">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center">
@@ -2389,10 +2390,10 @@ export default function App() {
                         </div>
                         <div className="text-left">
                           <h4 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
-                            💬 상담 핵심 키워드 말풍선 요약
+                            💬 상담 핵심 고민 2D 클러스터 차트 요약
                             <span className="text-[9px] bg-indigo-100 text-indigo-700 font-black px-2 py-0.5 rounded-full">AI 분석</span>
                           </h4>
-                          <p className="text-[10.5px] text-slate-500 font-semibold mt-0.5">상담 과정과 사장님의 주된 고민 맥락을 말풍선 형태로 추출·시각화한 핵심 요약 피드입니다.</p>
+                          <p className="text-[10.5px] text-slate-500 font-semibold mt-0.5">상담 과정과 사장님의 주된 고민 맥락을 2차원 공간에 배치하고 연간 관계를 시각화한 대화형 핵심 지도입니다.</p>
                         </div>
                       </div>
                       <button
@@ -2403,51 +2404,15 @@ export default function App() {
                             : "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700 shadow-sm"
                         }`}
                       >
-                        {showKeySummary ? "요약 접기" : "말풍선 열기"}
+                        {showKeySummary ? "차트 접기" : "클러스터 차트 열기"}
                       </button>
                     </div>
 
                     {showKeySummary && (
                       <div className="space-y-4">
-                        {/* 말풍선 배치: 비정형 대각선/구름 레이아웃 또는 플렉스 랩 형태의 풍선들 */}
-                        <div className="flex flex-wrap gap-4.5 justify-start md:justify-center py-3">
-                          {(report.keyKeywords && report.keyKeywords.length > 0
-                            ? report.keyKeywords
-                            : ["원단가 폭등", "구인난 해소", "프랜차이즈 공세", "온라인 마케팅 부재", "네이버 스마트플레이스", "정부 정책자금", "스마트 테이블오더"]
-                          ).map((keyword, i) => {
-                            // Varying colors for aesthetic visual pairing
-                            const bubbleColors = [
-                              "from-indigo-500 to-indigo-600 text-white shadow-indigo-100",
-                              "from-blue-500 to-cyan-500 text-white shadow-blue-100",
-                              "from-emerald-500 to-teal-500 text-white shadow-emerald-100",
-                              "from-amber-500 to-orange-500 text-white shadow-amber-100",
-                              "from-purple-500 to-pink-500 text-white shadow-purple-100",
-                              "from-rose-500 to-red-500 text-white shadow-rose-100"
-                            ];
-                            const selectColor = bubbleColors[i % bubbleColors.length];
-                            
-                            return (
-                              <div
-                                key={i}
-                                className="relative group cursor-default"
-                                id={`speech-bubble-${i}`}
-                              >
-                                {/* Speech Bubble Tail */}
-                                <div className="absolute -bottom-1.5 left-5 w-3 h-3 bg-indigo-500 rotate-45 transition-transform duration-200 group-hover:scale-110" style={{
-                                  background: `linear-gradient(135deg, var(--tw-gradient-stops))`
-                                }} />
-                                
-                                {/* Speech Bubble Body */}
-                                <div className={`relative px-4 py-2 bg-gradient-to-br ${selectColor} font-black text-xs shadow-md tracking-wider flex items-center gap-1.5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 rounded-2xl`}>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping shrink-0" />
-                                  <span>#{keyword}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        <KeywordClusterChart keywords={report.keyKeywords} />
                         <p className="text-[10.5px] font-semibold text-slate-500 text-left leading-relaxed bg-white border border-slate-200 rounded-xl px-4 py-3">
-                          💡 <span className="text-indigo-600 font-black">AI 처방 조견:</span> 추출된 토픽들은 대표님이 직면하신 상권 과부하 요인을 무상 지원 연계 및 자동 기술 도입 트랙으로 해결하기 위한 우선 순위 이정표입니다. 상단 보고서 및 하단 로드맵 체크리스트에서 순서대로 확인하실 수 있습니다.
+                          💡 <span className="text-indigo-600 font-black">AI 2D 토폴로지 분석 조견:</span> 추출된 인근 토픽들은 대표님이 직면하신 비용 상권 마찰 요인을 무상 지원 연계 및 자동 기술 도입 트랙으로 해결하기 위한 우선 순위 이정표입니다. 노드를 직접 클릭하여 세부 처방 구조도와 관련 로드맵 연결고리를 입체적으로 확인하실 수 있습니다.
                         </p>
                       </div>
                     )}
