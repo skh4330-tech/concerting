@@ -47,20 +47,46 @@ app.post("/api/validate-key", async (req, res) => {
       }
     });
 
-    // Run a lightweight call to verify the API key
-    const response = await testAi.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: "API Key Test. Respond with exactly the word OK.",
-      config: {
-        maxOutputTokens: 5,
-        temperature: 0.1,
+    let response;
+    let lastError: any = null;
+    const testModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-3.5-flash"];
+
+    for (const modelName of testModels) {
+      try {
+        console.log(`Validating API key with model: ${modelName}`);
+        response = await testAi.models.generateContent({
+          model: modelName,
+          contents: "API Key Test. Respond with exactly OK.",
+          config: {
+            maxOutputTokens: 5,
+            temperature: 0.1,
+          }
+        });
+        if (response && response.text) {
+          console.log(`Successfully validated API Key with model: ${modelName}`);
+          break; // successfully verified!
+        }
+      } catch (err: any) {
+        console.warn(`Validation failed with model ${modelName}:`, err.message || err);
+        lastError = err;
       }
-    });
+    }
 
     if (response && response.text) {
       return res.json({ valid: true });
     } else {
-      return res.status(400).json({ valid: false, error: "AI 응답을 수신하지 못했습니다. 유효하지 않은 보이스 키일 수 있습니다." });
+      const errMsg = lastError?.message || "AI 응답을 수신하지 못했습니다. 유효하지 않은 API Key일 수 있습니다.";
+      // Extract main user-friendly error message if possible
+      let friendlyMsg = errMsg;
+      if (errMsg.includes("API_KEY_INVALID")) {
+        friendlyMsg = "입력하신 API Key가 올바르지 않거나 권한이 부여되지 않았습니다. (API_KEY_INVALID)";
+      } else if (errMsg.includes("quota") || errMsg.includes("limit")) {
+        friendlyMsg = "API Key의 사용 한도 또는 쿼터가 초과되었습니다.";
+      }
+      return res.status(400).json({ 
+        valid: false, 
+        error: friendlyMsg 
+      });
     }
   } catch (error: any) {
     console.error("API Key Validation error:", error);

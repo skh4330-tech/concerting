@@ -121,16 +121,14 @@ export default function App() {
         setGeminiApiKey(enteredKey);
         setIsKeyValidated(true);
         setKeyValidationError("");
-        // Show validation success alert or toast and reload
-        alert("Gemini API Key가 성공적으로 검증 및 등록되었습니다!");
-        window.location.reload();
+        setShowKeyInput(false);
       } else {
         setKeyValidationError(data.error || "유효하지 않은 API Key 혹은 모델 에러입니다.");
         setIsKeyValidated(false);
         localStorage.removeItem("is_gemini_key_validated");
       }
     } catch (err: any) {
-      setKeyValidationError("키 검증 서버와 통신 도중 실패했습니다.");
+      setKeyValidationError("키 검증 서버와 통신 도중 실패했습니다. 네트워크 상태 및 입력값을 확인해 주세요.");
       setIsKeyValidated(false);
       localStorage.removeItem("is_gemini_key_validated");
     } finally {
@@ -145,8 +143,6 @@ export default function App() {
     setIsKeyValidated(false);
     setShowKeyInput(true);
     setKeyValidationError("");
-    alert("Gemini API Key 등록이 초기화되었습니다.");
-    window.location.reload();
   };
 
   // Client Profile State
