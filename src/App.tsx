@@ -103,13 +103,17 @@ export default function App() {
 
   const performDirectClientValidation = async (enteredKey: string) => {
     // Vercel 등 백엔드가 없는 환경을 대비한 클라이언트 사이드 직접 구글 Gemini API 검증 수행
-    const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-3.5-flash"];
+    const testCases = [
+      { version: "v1", model: "gemini-1.5-flash" },
+      { version: "v1beta", model: "gemini-1.5-flash" },
+      { version: "v1beta", model: "gemini-2.5-flash" }
+    ];
     let lastErrorMsg = "API Key 검증 요청이 실패했습니다. 네트워크 상태 및 입력값이 올바른지 확인해 주세요.";
     let success = false;
 
-    for (const model of modelsToTry) {
+    for (const testCase of testCases) {
       try {
-        const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${enteredKey}`;
+        const testUrl = `https://generativelanguage.googleapis.com/${testCase.version}/models/${testCase.model}:generateContent?key=${enteredKey}`;
         const directResponse = await fetch(testUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -125,10 +129,7 @@ export default function App() {
         } else {
           const errData = await directResponse.json();
           lastErrorMsg = errData?.error?.message || `구글 API 검증 실패 (${directResponse.status})`;
-          // 만약 API_KEY_INVALID와 같은 명확한 키 비유효 오류라면 추가 시도할 것 없이 빠져나감
-          if (lastErrorMsg.includes("API_KEY_INVALID") || lastErrorMsg.includes("invalid") || lastErrorMsg.includes("not found")) {
-            break;
-          }
+          // 만약 API_KEY_INVALID와 같은 명확한 키 비유효 오류인 경우에도 가볍게 끝까지 확인해보기 위해 break는 사용하지 않습니다.
         }
       } catch (err: any) {
         lastErrorMsg = err.message || "구글 API 검증 중 통신 오류가 발생했습니다.";
