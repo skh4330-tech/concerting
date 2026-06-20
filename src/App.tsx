@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   TrendingDown,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   BookOpen,
   ArrowRight,
@@ -70,6 +72,7 @@ export default function App() {
   const [keyValidationError, setKeyValidationError] = useState<string>("");
   const [showKeyInput, setShowKeyInput] = useState<boolean>(() => !localStorage.getItem("custom_gemini_api_key"));
   const [hasServerKey, setHasServerKey] = useState<boolean>(false);
+  const [showGuide, setShowGuide] = useState<boolean>(true);
 
   // Check if server-side key is active on app mount
   useEffect(() => {
@@ -1029,118 +1032,64 @@ export default function App() {
               </div>
 
               {/* 🔑 Gemini API Key 인증 관문 (Validation Gate Card) */}
-              <div className="bg-white rounded-3xl border-2 border-blue-900/10 shadow-md p-6 sm:p-8 space-y-5 relative overflow-hidden" id="gemini-api-key-gate-card">
-                {/* Clean blue pattern overlay */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full translate-x-12 -translate-y-12" />
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6" id="gemini-api-key-gate-card">
                 
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-blue-50 border border-blue-250 text-blue-700 rounded-2xl shadow-sm">
-                      <Key className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                        Gemini 안전 비즈니스 AI 전동기 승인
-                        {isKeyValidated ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md text-[10px] font-black">
-                            <Check className="w-3 h-3" /> 연동 성공
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md text-[10px] font-black">
-                            승인 필요
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-xs text-slate-500 font-semibold mt-1">
-                        실시간 상권 분석 검색(Google Search Grounding)과 초대형 컨설팅 정책 보고서 출력을 위해 최첨단 Gemini 2.5/3.5 대형 언어 모델 엔진을 활용합니다.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <a 
-                      href="https://aistudio.google.com/app/apikey" 
-                      target="_blank" 
-                      referrerPolicy="no-referrer" 
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      API Key 발급받기 (무료) ↗
-                    </a>
-                  </div>
+                {/* 1. Header Area conforming to Image Design */}
+                <div className="text-left">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2 mb-4 justify-start">
+                    <span className="text-emerald-500 text-lg">✅</span> 무료로 시작하세요. Gemini API 키만 있으면 됩니다.
+                  </h3>
                 </div>
 
-                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-200/60 text-xs leading-relaxed font-semibold">
+                {/* 2. Key Input Box and validated indicators */}
+                <div className="pt-1">
                   {isKeyValidated ? (
-                    <div className="text-emerald-800 space-y-1">
-                      <p className="flex items-center gap-1.5 font-extrabold text-sm text-emerald-900">
-                        <Check className="w-4 h-4 text-emerald-600" /> 사장님 전용 API Key 전원 연결 완료!
-                      </p>
-                      <p className="text-emerald-700 text-[11px] leading-relaxed">
-                        입력하신 API Key에 대한 실시간 유효 검증이 통과되었습니다. 이제 트래픽 한도 걱정 없이 골목 안심 1:1 진단과 맞춤 출력 보고서 다운로드 기능을 가속화하여 이용할 수 있습니다.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-rose-700 bg-rose-50/30 p-2.5 rounded-lg border border-rose-100 space-y-1">
-                      <p className="font-extrabold text-rose-800">⚠️ 필수 API Key 입력 요구</p>
-                      <p className="text-[11px] leading-relaxed text-rose-700">
-                        구글 AI Studio 링크를 통해 "무료 API Key 생성" 버튼을 단 10초 만에 눌러 무료 Key를 생성하신 후 아래 입력 필드에 붙여넣어 주십시오. 유효 검증이 성공적으로 통과되면 안전 비즈니스 진단 서비스의 잠금이 즉시 해제됩니다!
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Input, Validate, and Action block */}
-                <div className="pt-2">
-                  {isKeyValidated ? (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3 px-4 bg-emerald-50/30 border border-emerald-100 rounded-2xl">
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-emerald-600 animate-pulse" />
-                        <span className="text-xs text-slate-700 font-bold">
-                          현재 암호화 등록된 키: <span className="font-mono bg-white px-2 py-0.5 rounded border text-slate-500">{geminiApiKey.substring(0, 10)}****************</span>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-5 bg-emerald-50/40 border border-emerald-100 rounded-2xl">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-emerald-600 text-base">🔓</span>
+                        <span className="text-xs sm:text-sm text-slate-800 font-bold">
+                          현재 암호화 등록된 키: <span className="font-mono bg-white px-2 py-0.5 rounded border text-slate-600 font-bold ml-1">{geminiApiKey.substring(0, 10)}****************</span>
                         </span>
                       </div>
                       <button
                         onClick={handleClearKey}
-                        className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                        className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs font-black rounded-xl transition-all cursor-pointer"
                       >
                         등록된 API Key 해제하기
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row items-stretch gap-3">
                         <div className="relative flex-1">
-                          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                            <Key className="w-4 h-4 text-slate-400" />
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+                            <Lock className="w-4 h-4 text-slate-400" />
                           </span>
                           <input
                             type="password"
-                            placeholder="AIzaSy로 시작하는 구글 Gemini API Key 입력..."
+                            placeholder="Gemini API Key 입력"
                             value={geminiApiKey}
                             onChange={(e) => {
                               setGeminiApiKey(e.target.value);
                               setKeyValidationError("");
                             }}
                             disabled={isValidatingKey}
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-800/20 text-slate-800 placeholder-slate-400"
+                            className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-800/10 focus:border-slate-300 text-slate-800 placeholder-slate-405 transition-all shadow-sm"
                           />
                         </div>
                         
                         <button
                           onClick={() => handleValidateKey(geminiApiKey)}
                           disabled={isValidatingKey || !geminiApiKey.trim()}
-                          className="px-6 py-3 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-extrabold text-xs rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          className="px-8 py-3.5 bg-[#1e40af] hover:bg-[#1d4ed8] text-white font-extrabold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 whitespace-nowrap min-w-[130px] disabled:opacity-50 disabled:cursor-not-allowed shadow-md cursor-pointer"
                         >
                           {isValidatingKey ? (
                             <>
                               <Loader className="w-4 h-4 animate-spin" />
-                              <span>키 유효성 정밀 검사 중...</span>
+                              <span>인증 검사 중...</span>
                             </>
                           ) : (
-                            <>
-                              <Unlock className="w-4 h-4" />
-                              <span>API Key 검증 및 활성화</span>
-                            </>
+                            <span>시작하기</span>
                           )}
                         </button>
                       </div>
@@ -1150,6 +1099,93 @@ export default function App() {
                           ❌ {keyValidationError}
                         </p>
                       )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Dropdown Accordion for Guide: "Gemini API Key 발급 가이드" */}
+                <div className="border border-slate-100 rounded-2xl overflow-hidden mt-6 bg-slate-50/50">
+                  <button
+                    onClick={() => setShowGuide(!showGuide)}
+                    className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors text-left font-bold text-slate-800 text-xs sm:text-sm cursor-pointer border-b border-slate-100"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-600 text-lg">❓</span>
+                      <span className="font-extrabold text-slate-800">Gemini API Key 발급 가이드</span>
+                    </div>
+                    {showGuide ? (
+                      <ChevronUp className="w-4 h-4 text-slate-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                    )}
+                  </button>
+                  
+                  {showGuide && (
+                    <div className="bg-white p-5 sm:p-6 space-y-5 text-left text-xs sm:text-sm text-slate-600 font-semibold leading-relaxed">
+                      {/* Step 1 */}
+                      <div className="flex items-start gap-4">
+                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">1</span>
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-sm sm:text-base">Google AI Studio 접속</p>
+                          <p className="text-xs sm:text-sm text-slate-500 mt-1">아래 링크를 클릭하여 Google AI Studio에 접속하세요.</p>
+                          <a 
+                            href="https://aistudio.google.com/apikey" 
+                            target="_blank" 
+                            referrerPolicy="no-referrer" 
+                            className="text-blue-600 hover:underline text-xs sm:text-sm font-bold inline-block mt-1.5 break-all"
+                          >
+                            https://aistudio.google.com/apikey
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Step 2 */}
+                      <div className="flex items-start gap-4">
+                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">2</span>
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-sm sm:text-base">Google 계정으로 로그인</p>
+                          <p className="text-xs sm:text-sm text-slate-500 mt-1">Gmail 계정으로 로그인하세요. 계정이 없으면 무료로 만들 수 있어요.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 3 */}
+                      <div className="flex items-start gap-4">
+                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">3</span>
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-sm sm:text-base">'API 키 만들기' 클릭</p>
+                          <p className="text-xs sm:text-sm text-slate-500 mt-1">화면에서 'Create API Key' 또는 'API 키 만들기' 버튼을 클릭하세요.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 4 */}
+                      <div className="flex items-start gap-4">
+                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">4</span>
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-sm sm:text-base">프로젝트 선택 후 생성</p>
+                          <p className="text-xs sm:text-sm text-slate-500 mt-1">기본 프로젝트를 선택하고 'Create API key in existing project'를 클릭하세요.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 5 */}
+                      <div className="flex items-start gap-4">
+                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">5</span>
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-sm sm:text-base">API 키 복사</p>
+                          <p className="text-xs sm:text-sm text-slate-500 mt-1">생성된 API 키(AIza로 시작)를 복사하세요. 이 키를 입력창에 붙여넣기하면 됩니다!</p>
+                        </div>
+                      </div>
+
+                      {/* 🔑 API Key Link button at bottom */}
+                      <div className="pt-3">
+                        <a
+                          href="https://aistudio.google.com/apikey"
+                          target="_blank"
+                          referrerPolicy="no-referrer"
+                          className="w-full py-3 bg-[#eff6ff] hover:bg-[#dbeafe] text-[#1d4ed8] text-xs sm:text-sm font-black rounded-xl transition-all inline-flex items-center justify-center gap-1.5 border border-[#bfdbfe] cursor-pointer"
+                        >
+                          🔑 API 키 발급 페이지로 이동
+                        </a>
+                      </div>
                     </div>
                   )}
                 </div>
