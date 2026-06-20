@@ -101,6 +101,60 @@ export default function App() {
     return headers;
   };
 
+  const performDirectClientValidation = async (enteredKey: string) => {
+    // Vercel 등 백엔드가 없는 환경을 대비한 클라이언트 사이드 직접 구글 Gemini API 검증 수행
+    const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-3.5-flash"];
+    let lastErrorMsg = "API Key 검증 요청이 실패했습니다. 네트워크 상태 및 입력값이 올바른지 확인해 주세요.";
+    let success = false;
+
+    for (const model of modelsToTry) {
+      try {
+        const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${enteredKey}`;
+        const directResponse = await fetch(testUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: "API Key Test" }] }],
+            generationConfig: { maxOutputTokens: 5, temperature: 0.1 }
+          })
+        });
+
+        if (directResponse.ok) {
+          success = true;
+          break;
+        } else {
+          const errData = await directResponse.json();
+          lastErrorMsg = errData?.error?.message || `구글 API 검증 실패 (${directResponse.status})`;
+          // 만약 API_KEY_INVALID와 같은 명확한 키 비유효 오류라면 추가 시도할 것 없이 빠져나감
+          if (lastErrorMsg.includes("API_KEY_INVALID") || lastErrorMsg.includes("invalid") || lastErrorMsg.includes("not found")) {
+            break;
+          }
+        }
+      } catch (err: any) {
+        lastErrorMsg = err.message || "구글 API 검증 중 통신 오류가 발생했습니다.";
+      }
+    }
+
+    if (success) {
+      localStorage.setItem("custom_gemini_api_key", enteredKey);
+      localStorage.setItem("is_gemini_key_validated", "true");
+      setGeminiApiKey(enteredKey);
+      setIsKeyValidated(true);
+      setKeyValidationError("");
+      setShowKeyInput(false);
+    } else {
+      let friendlyMsg = lastErrorMsg;
+      if (lastErrorMsg.includes("API_KEY_INVALID")) {
+        friendlyMsg = "입력하신 API Key가 올바르지 않거나 구글 AI Studio 권한용 키가 아닙니다. (API_KEY_INVALID)";
+      } else if (lastErrorMsg.includes("quota") || lastErrorMsg.includes("limit")) {
+        friendlyMsg = "구글 API Key의 사용 한도 혹은 할당량(Quota)이 초과되었습니다.";
+      }
+      setKeyValidationError(friendlyMsg);
+      setIsKeyValidated(false);
+      localStorage.removeItem("is_gemini_key_validated");
+    }
+  };
+
   const handleValidateKey = async (enteredKey: string) => {
     if (!enteredKey.trim()) {
       setKeyValidationError("API Key를 입력해주세요.");
@@ -108,27 +162,49 @@ export default function App() {
     }
     setIsValidatingKey(true);
     setKeyValidationError("");
+
+    let response: Response | null = null;
+    let data: any = null;
+
     try {
-      const response = await fetch("/api/validate-key", {
+      // 1. 우선 백엔드 API 서버를 통해 안전한 대리 검증 시도
+      response = await fetch("/api/validate-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: enteredKey })
       });
-      const data = await response.json();
-      if (response.ok && data.valid) {
+      if (response && response.ok) {
+        data = await response.json();
+      }
+    } catch (err) {
+      console.warn("Express backend endpoint unreached. Falling back to Client-Side direct validation.", err);
+    }
+
+    try {
+      if (response && response.ok && data && data.valid) {
         localStorage.setItem("custom_gemini_api_key", enteredKey);
         localStorage.setItem("is_gemini_key_validated", "true");
         setGeminiApiKey(enteredKey);
         setIsKeyValidated(true);
         setKeyValidationError("");
         setShowKeyInput(false);
+      } else if (response && (!response.ok || (data && !data.valid))) {
+        // 서버가 명확하게 응답했으나 실패한 경우 판단
+        if (response.status === 400 || response.status === 403) {
+          const serverError = data?.error || "유효하지 않은 API Key 혹은 구글 모델 사양 에러입니다.";
+          setKeyValidationError(serverError);
+          setIsKeyValidated(false);
+          localStorage.removeItem("is_gemini_key_validated");
+        } else {
+          // Vercel 404나 게이트웨이 오류 등의 경우 직접 구글에 검증
+          await performDirectClientValidation(enteredKey);
+        }
       } else {
-        setKeyValidationError(data.error || "유효하지 않은 API Key 혹은 모델 에러입니다.");
-        setIsKeyValidated(false);
-        localStorage.removeItem("is_gemini_key_validated");
+        // 백엔드가 비활성화되어 있는 Vercel 등 프론트엔드 단독 환경 -> 클라이언트 사이드 직접 구글 서버 검증 수행
+        await performDirectClientValidation(enteredKey);
       }
-    } catch (err: any) {
-      setKeyValidationError("키 검증 서버와 통신 도중 실패했습니다. 네트워크 상태 및 입력값을 확인해 주세요.");
+    } catch (finalErr: any) {
+      setKeyValidationError("키 검증 처리 도중 예기치 못한 에러가 발생했습니다. 입력값을 확인해 주세요.");
       setIsKeyValidated(false);
       localStorage.removeItem("is_gemini_key_validated");
     } finally {
