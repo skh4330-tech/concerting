@@ -9,15 +9,7 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Initialize Gemini SDK with telemetry User-Agent
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
-});
+// Configure JSON body parser
 
 // Helper to get active Gemini client, supporting guest-provided keys from request
 function getAiClient(req: any) {
@@ -156,7 +148,7 @@ ${chatHistory ? chatHistory.map((h: any) => `[${h.role === 'user' ? '고객' : '
 
 반드시 아래 제공하는 스키마 규격(JSON Schema)에 맞춰 한글로 응답을 작성하십시오. 'markdownReport' 속성에는 한국어 소상공인 컨설턴트 톤앤매너로 작성된 완전한 완성형 마크다운 전문을 포함해야 합니다.`;
 
-    const response = await ai.models.generateContent({
+    const response = await activeAi.models.generateContent({
       model: "gemini-3.5-flash",
       contents: reportPrompt,
       config: {
