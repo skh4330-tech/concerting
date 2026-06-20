@@ -1,0 +1,104 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+
+  /* Custom overrides mapping slate scale to modern elite Deep Blue / Mineral Slate */
+  --color-slate-50: #F4F7FB;   /* Luminous cool blue-gray background */
+  --color-slate-100: #E9EFF6;  /* Soft cool steel */
+  --color-slate-200: #D5E1ED;  /* Medium steel divider */
+  --color-slate-300: #BDCFE0;  /* Slate blue frame border */
+  --color-slate-400: #8FA2B8;  /* Muted navy info */
+  --color-slate-500: #5C728A;  /* Mid ocean stone secondary */
+  --color-slate-600: #435973;  /* Slate body primary */
+  --color-slate-700: #2C3E52;  /* Bold navy subtitle */
+  --color-slate-800: #1B2936;  /* Deep business navy */
+  --color-slate-900: #0C1520;  /* Ultimate midnight blue */
+  --color-slate-950: #050A10;  /* abyssal deep blue */
+
+  /* Override blue scale to elite Trustworthy Deep Blue (Cobalt & Navy) */
+  --color-blue-50: #EEF4FC;
+  --color-blue-100: #DCE9F8;
+  --color-blue-200: #B1CEF1;
+  --color-blue-500: #1E50A2;   /* Royal Deep Blue */
+  --color-blue-600: #153E85;   /* Solid Business Navy */
+  --color-blue-700: #0E2C68;   /* Anchor deep blue */
+  --color-blue-850: #081B46;
+  --color-blue-900: #030F2B;
+
+  /* Override indigo scale to high-contrast tech mint and emerald for synergy */
+  --color-indigo-50: #F0FDF4;
+  --color-indigo-100: #DCFCE7;
+  --color-indigo-200: #BBF7D0;
+  --color-indigo-300: #86EFAC;
+  --color-indigo-500: #10B981; /* Fresh Growth Mint */
+  --color-indigo-600: #059669; /* Dynamic forest emerald */
+  --color-indigo-700: #047857; 
+  --color-indigo-800: #065F46;
+  --color-indigo-900: #022C22;
+
+  /* Override emerald/green scale to growth mint-green */
+  --color-emerald-50: #EDFDF6;
+  --color-emerald-100: #D1FAE5;
+  --color-emerald-250: #A7F3D0;
+  --color-emerald-500: #10B981; /* High quality Mint */
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+
+  /* Pure crisp snow white */
+  --color-white: #FFFFFF;
+}
+
+body {
+  font-family: var(--font-sans);
+  letter-spacing: -0.025em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #F4F7FB;
+  color: #1B2936;
+}
+
+/* Beautiful organic thin swoop vector details matching modern design style */
+.organic-swoop-bg::before {
+  content: "";
+  position: absolute;
+  top: 8%;
+  left: 3%;
+  width: 440px;
+  height: 440px;
+  border: 1px dashed rgba(30, 80, 162, 0.15);
+  border-radius: 41% 59% 45% 55% / 40% 45% 55% 60%;
+  pointer-events: none;
+  z-index: 0;
+  transform: rotate(-12deg);
+}
+
+.organic-swoop-bg::after {
+  content: "";
+  position: absolute;
+  bottom: 12%;
+  right: 4%;
+  width: 380px;
+  height: 380px;
+  border: 1.2px dashed rgba(16, 185, 129, 0.12);
+  border-radius: 54% 46% 62% 38% / 50% 58% 42% 50%;
+  pointer-events: none;
+  z-index: 0;
+  transform: rotate(25deg);
+}
+
+/* Custom cards styled to match the elite deep blue trust & green growth aesthetic */
+.bakeshop-card {
+  background-color: #FFFFFF;
+  border: 1.5px solid #D5E1ED;
+  border-radius: 20px;
+  box-shadow: 0 4px 14px -4px rgba(12, 21, 32, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bakeshop-card:hover {
+  border-color: #1E50A2;
+  box-shadow: 0 8px 24px -6px rgba(30, 80, 162, 0.1);
+}
+

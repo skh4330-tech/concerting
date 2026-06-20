@@ -1,0 +1,6 @@
+{
+  "name": "소상공인 비즈니스 컨설팅",
+  "description": "소상공인의 경영 안정과 재기를 돕기 위한 상권진단, SWOT 분석 및 3단계 고민해결 전략을 담은 대한민국 대표 비즈니스 컨설팅 솔루션입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
