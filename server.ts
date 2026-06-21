@@ -17,8 +17,9 @@ function getAiClient(req: any) {
   if (!customKey) {
     throw new Error("GEMINI_API_KEY_MISSING");
   }
+  const trimmedKey = String(customKey).trim();
   return new GoogleGenAI({
-    apiKey: customKey as string,
+    apiKey: trimmedKey,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build-service',
@@ -38,8 +39,9 @@ app.post("/api/validate-key", async (req, res) => {
       return res.status(400).json({ valid: false, error: "API Key를 입력하지 않으셨습니다." });
     }
 
+    const trimmedKey = String(key).trim();
     const testAi = new GoogleGenAI({
-      apiKey: key,
+      apiKey: trimmedKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build-validator',

@@ -94,7 +94,8 @@ export default function App() {
     const headers: Record<string, string> = {
       "Content-Type": "application/json"
     };
-    const key = localStorage.getItem("custom_gemini_api_key") || geminiApiKey;
+    const rawKey = localStorage.getItem("custom_gemini_api_key") || geminiApiKey || "";
+    const key = rawKey.trim();
     if (key) {
       headers["X-Gemini-Key"] = key;
     }
@@ -103,6 +104,7 @@ export default function App() {
 
   const performDirectClientValidation = async (enteredKey: string) => {
     // Vercel 등 백엔드가 없는 환경을 대비한 클라이언트 사이드 직접 구글 Gemini API 검증 수행
+    const trimmedKey = enteredKey.trim();
     const testCases = [
       { version: "v1", model: "gemini-1.5-flash" },
       { version: "v1beta", model: "gemini-1.5-flash" },
@@ -113,7 +115,7 @@ export default function App() {
 
     for (const testCase of testCases) {
       try {
-        const testUrl = `https://generativelanguage.googleapis.com/${testCase.version}/models/${testCase.model}:generateContent?key=${enteredKey}`;
+        const testUrl = `https://generativelanguage.googleapis.com/${testCase.version}/models/${testCase.model}:generateContent?key=${trimmedKey}`;
         const directResponse = await fetch(testUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -129,7 +131,6 @@ export default function App() {
         } else {
           const errData = await directResponse.json();
           lastErrorMsg = errData?.error?.message || `구글 API 검증 실패 (${directResponse.status})`;
-          // 만약 API_KEY_INVALID와 같은 명확한 키 비유효 오류인 경우에도 가볍게 끝까지 확인해보기 위해 break는 사용하지 않습니다.
         }
       } catch (err: any) {
         lastErrorMsg = err.message || "구글 API 검증 중 통신 오류가 발생했습니다.";
@@ -137,9 +138,9 @@ export default function App() {
     }
 
     if (success) {
-      localStorage.setItem("custom_gemini_api_key", enteredKey);
+      localStorage.setItem("custom_gemini_api_key", trimmedKey);
       localStorage.setItem("is_gemini_key_validated", "true");
-      setGeminiApiKey(enteredKey);
+      setGeminiApiKey(trimmedKey);
       setIsKeyValidated(true);
       setKeyValidationError("");
       setShowKeyInput(false);
@@ -161,6 +162,7 @@ export default function App() {
       setKeyValidationError("API Key를 입력해주세요.");
       return;
     }
+    const trimmedKey = enteredKey.trim();
     setIsValidatingKey(true);
     setKeyValidationError("");
 
@@ -172,7 +174,7 @@ export default function App() {
       response = await fetch("/api/validate-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: enteredKey })
+        body: JSON.stringify({ key: trimmedKey })
       });
       if (response && response.ok) {
         data = await response.json();
@@ -183,9 +185,9 @@ export default function App() {
 
     try {
       if (response && response.ok && data && data.valid) {
-        localStorage.setItem("custom_gemini_api_key", enteredKey);
+        localStorage.setItem("custom_gemini_api_key", trimmedKey);
         localStorage.setItem("is_gemini_key_validated", "true");
-        setGeminiApiKey(enteredKey);
+        setGeminiApiKey(trimmedKey);
         setIsKeyValidated(true);
         setKeyValidationError("");
         setShowKeyInput(false);
@@ -198,11 +200,11 @@ export default function App() {
           localStorage.removeItem("is_gemini_key_validated");
         } else {
           // Vercel 404나 게이트웨이 오류 등의 경우 직접 구글에 검증
-          await performDirectClientValidation(enteredKey);
+          await performDirectClientValidation(trimmedKey);
         }
       } else {
         // 백엔드가 비활성화되어 있는 Vercel 등 프론트엔드 단독 환경 -> 클라이언트 사이드 직접 구글 서버 검증 수행
-        await performDirectClientValidation(enteredKey);
+        await performDirectClientValidation(trimmedKey);
       }
     } catch (finalErr: any) {
       setKeyValidationError("키 검증 처리 도중 예기치 못한 에러가 발생했습니다. 입력값을 확인해 주세요.");
