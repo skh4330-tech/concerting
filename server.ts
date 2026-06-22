@@ -498,6 +498,106 @@ app.get("/api/config-status", (req, res) => {
   });
 });
 
+// @ts-ignore
+import { parse as parseHwp, getBodyText as getHwpText } from "hwp.js";
+import AdmZip from "adm-zip";
+
+// Fallback XML extractor for HWPX
+function parseHwpxFallback(buffer: Buffer): string {
+  try {
+    const zip = new AdmZip(buffer);
+    const zipEntries = zip.getEntries();
+    let combinedText = "";
+
+    for (const entry of zipEntries) {
+      if (entry.entryName.startsWith("Contents/section") && entry.entryName.endsWith(".xml")) {
+        const textContent = entry.getData().toString("utf8");
+        const matches = textContent.matchAll(/<(?:hp:)?t[^>]*>(.*?)<\/(?:hp:)?t>/g);
+        for (const match of matches) {
+          if (match[1]) {
+            let text = match[1]
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&amp;/g, "&")
+              .replace(/&quot;/g, '"')
+              .replace(/&apos;/g, "'")
+              .replace(/<[^>]*>/g, ""); // strip nested XML
+            combinedText += text + " ";
+          }
+        }
+      }
+    }
+    return combinedText.trim();
+  } catch (err) {
+    console.error("HWPX Fallback parsing failed:", err);
+    throw err;
+  }
+}
+
+// Endpoint to parse PDF or HWP/HWPX documents
+app.post("/api/parse-document", async (req, res) => {
+  try {
+    const { base64Data, fileName } = req.body;
+    if (!base64Data) {
+      return res.status(400).json({ error: "파일 데이터가 전달되지 않았습니다." });
+    }
+
+    const buffer = Buffer.from(base64Data, "base64");
+    const extension = String(fileName).split(".").pop()?.toLowerCase();
+
+    if (extension === "pdf") {
+      let activeAi;
+      try {
+        activeAi = getAiClient(req);
+      } catch (err) {
+        return res.status(401).json({ error: "PDF 분석을 사용하려면 먼저 상단의 'Gemini 안전 비즈니스 AI 전동기 승인' 영역에 유효한 Gemini API Key를 등록 및 검증해 주셔야 합니다." });
+      }
+
+      const response = await activeAi.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: [
+          { text: "이 파일은 소상공인 컨설팅 상담 일지, 필기 노트, 영수증 또는 매장 경영 분석 자료 PDF 문서입니다. 이미지나 문서 속의 텍스트와 모든 수치, 경영 상황 및 현안 정보를 한글로 아주 상세하게 누락 없이 복원/디지털화하여 정리해서 텍스트로 추출해 주십시오. 불필요한 서론/결론 배경문구 없이 즉시 추출된 텍스트 내용만을 보여주세요." },
+          { inlineData: { mimeType: "application/pdf", data: base64Data } }
+        ]
+      });
+
+      const text = response.text || "PDF에서 텍스트를 복원하지 못했습니다.";
+      return res.json({ text });
+    }
+
+    if (extension === "hwp" || extension === "hwpx") {
+      try {
+        const doc = parseHwp(buffer);
+        const text = getHwpText(doc);
+        if (text && text.trim().length > 0) {
+          return res.json({ text });
+        }
+        throw new Error("hwp.js로 추출된 텍스트가 비어 있습니다.");
+      } catch (hwpErr: any) {
+        console.warn("hwp.js parsing failed, trying raw text stripping fallback:", hwpErr.message || hwpErr);
+        if (extension === "hwpx") {
+          try {
+            const fallbackText = parseHwpxFallback(buffer);
+            if (fallbackText && fallbackText.trim().length > 0) {
+              return res.json({ text: fallbackText });
+            }
+          } catch (fallbackErr: any) {
+            console.error("HWPX Fallback parsing failed:", fallbackErr);
+          }
+        }
+        return res.status(500).json({ 
+          error: `HWP/HWPX 디코딩 오류: ${hwpErr.message || hwpErr}. 파일 인코딩 형식을 확인해 주시거나 다른 확장자(.txt, .pdf)로 변환해 업로드해 주십시오.` 
+        });
+      }
+    }
+
+    return res.status(400).json({ error: "지원하지 않는 확장자입니다. (PDF, HWP, HWPX만 가능)" });
+  } catch (error: any) {
+    console.error("parse-document endpoint error:", error);
+    res.status(500).json({ error: "문서 디코더 내부 오류", details: error.message });
+  }
+});
+
 // Setup development or production environment static asset serving
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   FileText,
+  Upload,
   MessageSquare,
   AlertTriangle,
   RotateCcw,
@@ -73,6 +74,11 @@ export default function App() {
   const [showKeyInput, setShowKeyInput] = useState<boolean>(() => !localStorage.getItem("custom_gemini_api_key"));
   const [hasServerKey, setHasServerKey] = useState<boolean>(false);
   const [showGuide, setShowGuide] = useState<boolean>(true);
+
+  // Drag & Drop / File Upload States
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string>("");
 
   // Check if server-side key is active on app mount
   useEffect(() => {
@@ -228,9 +234,9 @@ export default function App() {
   const [profile, setProfile] = useState<ClientProfile>({
     clientName: "",
     industry: "",
-    location: "서울시 마포구 공덕역 인근",
-    yearsOfOp: "3년 미만",
-    priorSupport: "대출 지원 이력 없음",
+    location: "",
+    yearsOfOp: "",
+    priorSupport: "",
     coreConcerns: ""
   });
 
@@ -504,6 +510,177 @@ export default function App() {
     }
   };
 
+  // helper to read file contents and analyze if it is an image
+  const processUploadedFile = async (file: File) => {
+    if (!file) return;
+    setUploadError("");
+    setIsUploading(true);
+
+    const isImage = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
+    const isText = file.type.startsWith("text/") || /\.(txt|csv|tsv|md|json)$/i.test(file.name);
+    const isDocument = /\.(pdf|hwp|hwpx)$/i.test(file.name);
+
+    if (isText) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        if (text) {
+          setBatchText(text);
+          // Auto fill core concerns if empty
+          if (!profile.coreConcerns) {
+            setProfile(prev => ({ ...prev, coreConcerns: text.substring(0, 100).trim() }));
+          }
+        }
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        setUploadError("텍스트 파일을 읽는 도중 에러가 발생했습니다.");
+        setIsUploading(false);
+      };
+      reader.readAsText(file, "UTF-8");
+    } else if (isDocument) {
+      // Document analysis via custom backend endpoint
+      const currentKey = localStorage.getItem("custom_gemini_api_key") || geminiApiKey || "";
+      const extension = file.name.split(".").pop()?.toLowerCase();
+
+      if (extension === "pdf" && !currentKey.trim()) {
+        setUploadError("상담 메모 일지 등 PDF 문서 AI 분석을 사용하려면, 먼저 'Gemini 안전 비즈니스 AI 전동기 승인' 영역에 API Key를 등록해 주셔야 합니다.");
+        setIsUploading(false);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const dataUrl = e.target?.result as string;
+          const base64Data = dataUrl.split(",")[1];
+
+          const response = await fetch("/api/parse-document", {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "X-Gemini-Key": currentKey.trim()
+            },
+            body: JSON.stringify({
+              base64Data,
+              fileName: file.name
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.text) {
+              setBatchText(data.text);
+              if (!profile.coreConcerns) {
+                setProfile(prev => ({ ...prev, coreConcerns: data.text.substring(0, 100).trim() }));
+              }
+            } else {
+              setUploadError("문서 분석 결과가 비어 있습니다. 파일 손상 여부를 확인해 주십시오.");
+            }
+          } else {
+            const errData = await response.json();
+            setUploadError(errData.error || "문서 형식을 해독 분석하는 데 실패했습니다.");
+          }
+        } catch (err: any) {
+          setUploadError(`문서 업로드 분석 처리 오류: ${err.message || err}`);
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.onerror = () => {
+        setUploadError("문서 파일 수신에 실패했습니다.");
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } else if (isImage) {
+      // Image analysis via Google Gemini API directly (multimodal)
+      const currentKey = localStorage.getItem("custom_gemini_api_key") || geminiApiKey || "";
+      if (!currentKey.trim()) {
+        setUploadError("상담 메모 일지 등 이미지 분석 및 디지털 OCR 변환을 사용하려면, 먼저 'Gemini 안전 비즈니스 AI 전동기 승인' 영역에 API Key를 사용자로 등록해 주셔야 합니다.");
+        setIsUploading(false);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const dataUrl = e.target?.result as string;
+          // Extract base64 part
+          const base64Data = dataUrl.split(",")[1];
+          const mimeType = file.type || "image/jpeg";
+
+          // Try Gemini 1.5-flash which is multimodal and highly fast
+          const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentKey.trim()}`;
+          const response = await fetch(testUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: "이 이미지는 소상공인 컨설팅 상담 일지, 필기 노트, 영수증 또는 매장 경영 분석 자료입니다. 이미지 속의 텍스트와 모든 수치, 경영 상황 및 현안 정보를 한국어로 아주 상세하게 누락 없이 복원/디지털화하여 정리해서 텍스트로 추출해 주십시오. 불필요한 서론/결론 배경언어 정보 없이 즉시 추출된 텍스트 내용만을 보여주세요." },
+                  { inlineData: { mimeType: mimeType, data: base64Data } }
+                ]
+              }]
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const extractedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (extractedText) {
+              setBatchText(extractedText);
+              // Auto fill core concerns
+              if (!profile.coreConcerns) {
+                setProfile(prev => ({ ...prev, coreConcerns: extractedText.substring(0, 100).trim() }));
+              }
+            } else {
+              setUploadError("이미지로부터 텍스트를 추출해내는 데 실패했습니다. 파일 텍스트 구조를 확인해 주세요.");
+            }
+          } else {
+            const errData = await response.json();
+            const errMessage = errData?.error?.message || "구글 Gemini API가 에러를 응답했습니다.";
+            setUploadError(`이미지 AI 분석 실패: ${errMessage}`);
+          }
+        } catch (err: any) {
+          setUploadError(`이미지 업로드 분석 처리 오류: ${err.message || err}`);
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.onerror = () => {
+        setUploadError("이미지 파일 로드에 실패했습니다.");
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setUploadError("지원하지 않는 파일 형식입니다. 텍스트 파일(.txt, .csv), 문서(.pdf, .hwp, .hwpx) 또는 이미지 파일(.jpg, .png)을 업로드해 주세요.");
+      setIsUploading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await processUploadedFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      await processUploadedFile(e.target.files[0]);
+    }
+  };
+
   const handleStartConsulting = (mode: "intro" | "A" | "B") => {
     if (mode !== "intro" && !isKeyValidated) {
       alert("죄송합니다. 현재 AI 진단과 보고서를 이용하려면 먼저 'Gemini 안전 비즈니스 AI 전동기 승인' 카드에서 유효한 Gemini API Key를 등록 및 검증해 주셔야 합니다.");
@@ -754,6 +931,7 @@ export default function App() {
     profile.clientName.trim().length > 0 &&
     profile.industry.trim().length > 0 &&
     profile.location.trim().length > 0 &&
+    profile.yearsOfOp.trim().length > 0 &&
     profile.coreConcerns.trim().length > 0;
 
   // Render Section
@@ -895,9 +1073,9 @@ export default function App() {
                 setProfile({
                   clientName: "",
                   industry: "",
-                  location: "서울시 마포구 공덕역 인근",
-                  yearsOfOp: "3년 미만",
-                  priorSupport: "대출 지원 이력 없음",
+                  location: "",
+                  yearsOfOp: "",
+                  priorSupport: "",
                   coreConcerns: ""
                 });
                 setBatchText("");
@@ -1437,6 +1615,7 @@ export default function App() {
                         onChange={(e) => setProfile({...profile, yearsOfOp: e.target.value})}
                         className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
+                        <option value="">-- 선택해 주세요 * --</option>
                         <option value="1년 미만">1년 미만 (신성)</option>
                         <option value="1년~3년">1년~3년 (정밀정비)</option>
                         <option value="3년~5년">3년~5년 (고비구역)</option>
@@ -1499,6 +1678,61 @@ export default function App() {
                         수원 청년빵집 불러오기
                       </button>
                     </div>
+
+                    {/* 드래그 앤 드롭 파일 업로드 영역 */}
+                    <div 
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`relative mb-3 border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 ${
+                        isDragging 
+                          ? "border-blue-500 bg-blue-50/50" 
+                          : "border-slate-200 bg-slate-50/30 hover:bg-slate-50/70 hover:border-slate-300"
+                      }`}
+                      onClick={() => document.getElementById("hidden-file-input")?.click()}
+                    >
+                      <input 
+                        type="file" 
+                        id="hidden-file-input" 
+                        className="hidden" 
+                        accept=".txt,.csv,.tsv,.md,.json,image/*,.pdf,.hwp,.hwpx"
+                        onChange={handleFileChange}
+                      />
+                      
+                      <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                        {isUploading ? (
+                          <>
+                            <Loader className="w-5 h-5 text-blue-600 animate-spin" />
+                            <p className="text-xs font-bold text-slate-700">AI 일지 및 스마트 문서(PDF/HWP/HWPX) 분석 중...</p>
+                            <p className="text-[10px] text-slate-400">파일에서 텍스트를 해독하여 추출 중입니다. 잠시만 기다려 주세요.</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="p-2 bg-blue-50 rounded-full text-blue-600">
+                              <Upload className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-700">
+                                상담 기록(.txt/.csv), 이문서(.pdf/.hwp/.hwpx) 또는 메모 사진(.jpg/.png)을 드래그/클릭하여 업로드
+                              </p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                본문 내용이 즉시 입력되며, 스캔 문서나 필기 메모 이미지도 AI가 원문 그대로 아주 상세히 디코딩합니다.
+                              </p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {uploadError && (
+                      <div className="p-2.5 mb-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-xs flex items-start gap-1.5">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">업로드 실패</p>
+                          <p className="text-[11px] leading-relaxed">{uploadError}</p>
+                        </div>
+                      </div>
+                    )}
 
                     <textarea
                       rows={7}
